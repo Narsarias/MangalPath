@@ -167,30 +167,97 @@ a{color:inherit}
 </div>
 <button class="music" id="music" aria-label="Toggle ambient devotional sound">♫</button>
 <script>
-const splash=document.getElementById('splash');
-document.getElementById('enter').addEventListener('click',()=>{splash.classList.add('hide');setTimeout(()=>splash.remove(),800);if(!on)play();});
-// Place bgm.mp3 in the same folder as this HTML file.\nconst bgm = new Audio('./bgm.mp3');
-bgm.loop = true;
-bgm.preload = 'auto';
-bgm.volume = 0.42;
-let on = false;
-const music = document.getElementById('music');
-function play(){
-  bgm.play().then(()=>{
-    on = true;
-    music.classList.add('on');
-    music.textContent = '♫';
-  }).catch(()=>{
-    on = false;
-    music.classList.remove('on');
+(() => {
+  const splash = document.getElementById('splash');
+  const enterButton = document.getElementById('enter');
+  const musicButton = document.getElementById('music');
+
+  // Keep bgm.mp3 in the same GitHub repository folder as index.html.
+  const bgm = new Audio('./bgm.mp3');
+  bgm.loop = true;
+  bgm.preload = 'auto';
+  bgm.volume = 0.42;
+
+  let musicIsPlaying = false;
+
+  function updateMusicButton(playing) {
+    musicIsPlaying = playing;
+    musicButton.classList.toggle('on', playing);
+    musicButton.setAttribute(
+      'aria-label',
+      playing ? 'Pause devotional background music' : 'Play devotional background music'
+    );
+    musicButton.title = playing ? 'Pause music' : 'Play music';
+  }
+
+  function startMusicFromUserGesture() {
+    // Must be called directly during the Enter-button click for mobile browsers.
+    const attempt = bgm.play();
+    if (attempt && typeof attempt.then === 'function') {
+      attempt.then(() => updateMusicButton(true)).catch((error) => {
+        updateMusicButton(false);
+        console.warn('Could not start bgm.mp3:', error);
+      });
+    } else {
+      updateMusicButton(true);
+    }
+  }
+
+  enterButton.addEventListener('click', () => {
+    // Start audio first, directly within the user's tap gesture.
+    startMusicFromUserGesture();
+    splash.classList.add('hide');
+    window.setTimeout(() => {
+      if (splash && splash.parentNode) splash.remove();
+    }, 800);
   });
-}
-function stop(){
-  bgm.pause();
-  on = false;
-  music.classList.remove('on');
-}
-music.addEventListener('click',()=>on?stop():play());/* Gentle scroll-linked parallax for the Dadi artwork and heritage background. */let ticking=false;function parallax(){const y=window.scrollY||0;const art=document.querySelector('.hero-art img');if(art)art.style.transform='translate3d(0,'+(Math.min(y*.18,95))+'px,0) scale(1.04)';document.documentElement.style.setProperty('--scroll-shift',(y*.08)+'px');ticking=false}window.addEventListener('scroll',()=>{if(!ticking){requestAnimationFrame(parallax);ticking=true}},{passive:true});parallax();
+
+  musicButton.addEventListener('click', () => {
+    if (musicIsPlaying && !bgm.paused) {
+      bgm.pause();
+      updateMusicButton(false);
+      return;
+    }
+    const attempt = bgm.play();
+    if (attempt && typeof attempt.then === 'function') {
+      attempt.then(() => updateMusicButton(true)).catch((error) => {
+        updateMusicButton(false);
+        console.warn('Could not play bgm.mp3:', error);
+      });
+    } else {
+      updateMusicButton(true);
+    }
+  });
+
+  bgm.addEventListener('play', () => updateMusicButton(true));
+  bgm.addEventListener('pause', () => updateMusicButton(false));
+  bgm.addEventListener('error', () => {
+    updateMusicButton(false);
+    console.error('bgm.mp3 failed to load. Check its exact filename and repository location.');
+  });
+
+  // Gentle scroll-linked parallax for the Dadi artwork.
+  let ticking = false;
+  function parallax() {
+    const y = window.scrollY || 0;
+    const art = document.querySelector('.hero-art img');
+    if (art) {
+      art.style.transform =
+        'translate3d(0,' + Math.min(y * 0.18, 95) + 'px,0) scale(1.04)';
+    }
+    document.documentElement.style.setProperty('--scroll-shift', (y * 0.08) + 'px');
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(parallax);
+      ticking = true;
+    }
+  }, { passive: true });
+
+  parallax();
+})();
 </script>
 </body>
 </html>
